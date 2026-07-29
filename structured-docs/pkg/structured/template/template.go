@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template/parse"
+
+	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
 )
 
 type Template struct {
@@ -15,10 +17,10 @@ type Template struct {
 	OutputExt      string
 }
 
-func LoadAll(templateDir string) ([]*Template, error) {
+func LoadAll(fsys fsys.FS, templateDir string) ([]*Template, error) {
 	var templates []*Template
 
-	err := filepath.Walk(templateDir, func(path string, info os.FileInfo, err error) error {
+	err := fsys.Walk(templateDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -31,7 +33,7 @@ func LoadAll(templateDir string) ([]*Template, error) {
 			return nil
 		}
 
-		b, err := os.ReadFile(path)
+		b, err := fsys.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("reading template %s: %w", path, err)
 		}
@@ -76,7 +78,7 @@ func outputExt(name string) string {
 }
 
 func extractFields(content string) ([]string, error) {
-	trees, err := parse.Parse("_", content, "{{", "}}", parse.ParseComments)
+	trees, err := parse.Parse("_", content, "{{", "}}")
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %w", err)
 	}
@@ -138,10 +140,6 @@ func walkNodes(nodes []parse.Node, fn func(parse.Node)) {
 		case *parse.TemplateNode:
 			if n.Pipe != nil {
 				walkPipeNode(n.Pipe, fn)
-			}
-		case *parse.DefineNode:
-			if n.List != nil {
-				walkNodes(n.List.Nodes, fn)
 			}
 		}
 	}

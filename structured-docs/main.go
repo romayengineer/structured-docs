@@ -9,6 +9,7 @@ import (
 
 	"github.com/romayengineer/structured-docs/pkg/structured/compiler"
 	"github.com/romayengineer/structured-docs/pkg/structured/config"
+	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
 	"github.com/romayengineer/structured-docs/pkg/structured/watcher"
 )
 
@@ -18,19 +19,21 @@ func main() {
 	clean := flag.Bool("clean", false, "remove output directory before compiling")
 	flag.Parse()
 
-	cfg, err := config.Load(*configPath)
+	var fs fsys.FS = fsys.OS{}
+
+	cfg, err := config.Load(fs, *configPath)
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
 
 	if *clean {
-		if err := compiler.CleanOutput(cfg); err != nil {
+		if err := compiler.CleanOutput(fs, cfg); err != nil {
 			log.Fatalf("clean: %v", err)
 		}
 		log.Println("cleaned output directory")
 	}
 
-	results, err := compiler.Compile(cfg)
+	results, err := compiler.Compile(fs, cfg)
 	if err != nil {
 		log.Fatalf("compile: %v", err)
 	}
@@ -51,7 +54,7 @@ func main() {
 			close(done)
 		}()
 
-		if err := watcher.Watch(cfg, done); err != nil {
+		if err := watcher.Watch(fs, cfg, done); err != nil {
 			log.Fatalf("watch: %v", err)
 		}
 	}

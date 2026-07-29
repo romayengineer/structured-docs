@@ -2,12 +2,12 @@ package compiler
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/romayengineer/structured-docs/pkg/structured/config"
 	"github.com/romayengineer/structured-docs/pkg/structured/data"
+	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
 	"github.com/romayengineer/structured-docs/pkg/structured/renderer"
 	"github.com/romayengineer/structured-docs/pkg/structured/resolver"
 	"github.com/romayengineer/structured-docs/pkg/structured/schema"
@@ -20,18 +20,18 @@ type Result struct {
 	Format     string
 }
 
-func Compile(cfg *config.Config) ([]Result, error) {
-	types, err := schema.LoadAll(cfg.SchemaDir)
+func Compile(fsys fsys.FS, cfg *config.Config) ([]Result, error) {
+	types, err := schema.LoadAll(fsys, cfg.SchemaDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading schemas: %w", err)
 	}
 
-	templates, err := template.LoadAll(cfg.TemplateDir)
+	templates, err := template.LoadAll(fsys, cfg.TemplateDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading templates: %w", err)
 	}
 
-	dataFiles, err := data.LoadAll(cfg.DataDir, types)
+	dataFiles, err := data.LoadAll(fsys, cfg.DataDir, types)
 	if err != nil {
 		return nil, fmt.Errorf("loading data: %w", err)
 	}
@@ -56,11 +56,11 @@ func Compile(cfg *config.Config) ([]Result, error) {
 		outName := base + job.Template.OutputExt
 		outPath := filepath.Join(cfg.OutputDir, relDir, outName)
 
-		if err := os.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+		if err := fsys.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
 			return nil, fmt.Errorf("creating output directory for %s: %w", outPath, err)
 		}
 
-		if err := os.WriteFile(outPath, []byte(output), 0644); err != nil {
+		if err := fsys.WriteFile(outPath, []byte(output), 0644); err != nil {
 			return nil, fmt.Errorf("writing output %s: %w", outPath, err)
 		}
 
@@ -74,6 +74,6 @@ func Compile(cfg *config.Config) ([]Result, error) {
 	return results, nil
 }
 
-func CleanOutput(cfg *config.Config) error {
-	return os.RemoveAll(cfg.OutputDir)
+func CleanOutput(fsys fsys.FS, cfg *config.Config) error {
+	return fsys.RemoveAll(cfg.OutputDir)
 }

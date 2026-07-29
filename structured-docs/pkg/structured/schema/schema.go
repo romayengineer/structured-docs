@@ -2,10 +2,10 @@ package schema
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,7 +17,7 @@ type FieldDefinition struct {
 
 type TypeDefinition struct {
 	Name        string
-	Description string           `yaml:"description"`
+	Description string            `yaml:"description"`
 	Fields      []FieldDefinition `yaml:"fields"`
 }
 
@@ -47,8 +47,8 @@ func (t *TypeDefinition) Field(name string) *FieldDefinition {
 	return nil
 }
 
-func LoadAll(schemaDir string) (map[string]*TypeDefinition, error) {
-	entries, err := os.ReadDir(schemaDir)
+func LoadAll(fsys fsys.FS, schemaDir string) (map[string]*TypeDefinition, error) {
+	entries, err := fsys.ReadDir(schemaDir)
 	if err != nil {
 		return nil, fmt.Errorf("reading schema dir %s: %w", schemaDir, err)
 	}
@@ -67,7 +67,7 @@ func LoadAll(schemaDir string) (map[string]*TypeDefinition, error) {
 		typeName = strings.TrimSuffix(typeName, ".yaml")
 
 		path := filepath.Join(schemaDir, entry.Name())
-		b, err := os.ReadFile(path)
+		b, err := fsys.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("reading schema %s: %w", path, err)
 		}

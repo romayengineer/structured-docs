@@ -3,34 +3,32 @@ package watcher
 import (
 	"fmt"
 	"log"
-	"path/filepath"
+	"os"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/romayengineer/structured-docs/pkg/structured/compiler"
 	"github.com/romayengineer/structured-docs/pkg/structured/config"
+	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
 )
 
-type WatchDirs struct {
-	SchemaDir   string
-	DataDir     string
-	TemplateDir string
-}
-
-func Watch(cfg *config.Config, done chan struct{}) error {
-	watcher, err := fsnotify.NewWatcher()
+func Watch(fsys fsys.FS, cfg *config.Config, done chan struct{}) error {
+	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return fmt.Errorf("creating watcher: %w", err)
 	}
-	defer watcher.Close()
+	defer w.Close()
 
 	dirs := []string{cfg.SchemaDir, cfg.DataDir, cfg.TemplateDir}
 	for _, dir := range dirs {
-		if err := filepath.Walk(dir, func(path string, info any, err error) error {
+		if err := fsys.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			return watcher.Add(path)
+			if info.IsDir() {
+				return w.Add(path)
+			}
+			return nil
 		}); err != nil {
 			return fmt.Errorf("watching directory %s: %w", dir, err)
 		}
@@ -40,7 +38,7 @@ func Watch(cfg *config.Config, done chan struct{}) error {
 
 	for {
 		select {
-		case event, ok := <-watcher.Events:
+		case event, ok := <-w.Events:
 			if !ok {
 				return nil
 			}
@@ -50,7 +48,7 @@ func Watch(cfg *config.Config, done chan struct{}) error {
 				}
 				debounceTimer = time.AfterFunc(500*time.Millisecond, func() {
 					log.Println("change detected, recompiling...")
-					results, err := compiler.Compile(cfg)
+					results, err := compiler.Compile(fsys, cfg)
 					if err != nil {
 						log.Printf("compile error: %v", err)
 						return
@@ -61,7 +59,7 @@ func Watch(cfg *config.Config, done chan struct{}) error {
 				})
 			}
 
-		case err, ok := <-watcher.Errors:
+		case err, ok := <-w.Errors:
 			if !ok {
 				return nil
 			}

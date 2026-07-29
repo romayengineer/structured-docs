@@ -2,8 +2,8 @@ package config
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,14 +24,11 @@ func Default() *Config {
 	}
 }
 
-func Load(path string) (*Config, error) {
+func Load(fsys fsys.FS, path string) (*Config, error) {
 	cfg := Default()
 
-	b, err := os.ReadFile(path)
+	b, err := fsys.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("config file not found: %s", path)
-		}
 		return nil, fmt.Errorf("reading config: %w", err)
 	}
 

@@ -5,36 +5,24 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
 	"github.com/romayengineer/structured-docs/pkg/structured/schema"
 	"gopkg.in/yaml.v3"
 )
 
 type DataFile struct {
-	SourcePath string
-	TypeName   string
+	SourcePath       string
+	TypeName         string
 	ExplicitTemplate string
-	Fields     map[string]interface{}
+	Fields           map[string]interface{}
 }
 
-func loadRaw(path string) (map[string]interface{}, error) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("reading data file %s: %w", path, err)
-	}
-
-	var raw map[string]interface{}
-	if err := yaml.Unmarshal(b, &raw); err != nil {
-		return nil, fmt.Errorf("parsing data file %s: %w", path, err)
-	}
-
-	return raw, nil
-}
-
-func LoadAll(dataDir string, types map[string]*schema.TypeDefinition) ([]*DataFile, error) {
+func LoadAll(fsys fsys.FS, dataDir string, types map[string]*schema.TypeDefinition) ([]*DataFile, error) {
 	var files []*DataFile
 
-	err := filepath.Walk(dataDir, func(path string, info os.FileInfo, err error) error {
+	err := fsys.Walk(dataDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -42,13 +30,19 @@ func LoadAll(dataDir string, types map[string]*schema.TypeDefinition) ([]*DataFi
 			return nil
 		}
 
-		if !strings.HasSuffix(info.Name(), ".yml") && !strings.HasSuffix(info.Name(), ".yaml") {
+		if !strings.HasSuffix(info.Name(), ".yml") &&
+			!strings.HasSuffix(info.Name(), ".yaml") {
 			return nil
 		}
 
-		raw, err := loadRaw(path)
+		b, err := fsys.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("loading data: %w", err)
+			return fmt.Errorf("reading data file %s: %w", path, err)
+		}
+
+		var raw map[string]interface{}
+		if err := yaml.Unmarshal(b, &raw); err != nil {
+			return fmt.Errorf("parsing data file %s: %w", path, err)
 		}
 
 		typeVal, ok := raw["type"]
@@ -76,8 +70,8 @@ func LoadAll(dataDir string, types map[string]*schema.TypeDefinition) ([]*DataFi
 			fields[k] = v
 		}
 
-		if err := validate(fields, td); err != nil {
-			return fmt.Errorf("data file %s: validation error: %w", path, err)
+		if err := normalizeAndValidate(fields, td); err != nil {
+			return fmt.Errorf("data file %s: %w", path, err)
 		}
 
 		relPath, err := filepath.Rel(dataDir, path)
@@ -102,92 +96,151 @@ func LoadAll(dataDir string, types map[string]*schema.TypeDefinition) ([]*DataFi
 	return files, nil
 }
 
-func validate(fields map[string]interface{}, td *schema.TypeDefinition) error {
-	for _, f := range td.Fields {
-		if f.Required {
-			val, ok := fields[f.Name]
-			if !ok {
-				return fmt.Errorf("missing required field %q", f.Name)
+func normalizeAndValidate(fields map[string]interface{}, td *schema.TypeDefinition) error {
+	for _, fd := range td.Fields {
+		val, ok := fields[fd.Name]
+		if !ok {
+			if fd.Required {
+				return fmt.Errorf("missing required field %q", fd.Name)
 			}
-			if err := checkType(val, f.Type); err != nil {
-				return fmt.Errorf("field %q: %w", f.Name, err)
-			}
+			continue
 		}
+
+		normalized, err := normalizeValue(val, fd.Type)
+		if err != nil {
+			return fmt.Errorf("field %q: %w", fd.Name, err)
+		}
+		fields[fd.Name] = normalized
 	}
 
-	for name, val := range fields {
+	for name := range fields {
 		if !td.HasField(name) {
 			return fmt.Errorf("unknown field %q", name)
-		}
-		fd := td.Field(name)
-		if err := checkType(val, fd.Type); err != nil {
-			return fmt.Errorf("field %q: %w", name, err)
 		}
 	}
 
 	return nil
 }
 
-func checkType(val interface{}, expected string) error {
+func normalizeValue(val interface{}, expected string) (interface{}, error) {
 	if val == nil {
-		return fmt.Errorf("unexpected nil value (expected %s)", expected)
+		return nil, fmt.Errorf("unexpected nil (expected %s)", expected)
 	}
 
 	switch expected {
 	case "string":
-		if _, ok := val.(string); !ok {
-			return fmt.Errorf("expected string, got %T", val)
+		switch v := val.(type) {
+		case string:
+			return v, nil
+		case int:
+			return fmt.Sprintf("%d", v), nil
+		case int32:
+			return fmt.Sprintf("%d", v), nil
+		case int64:
+			return fmt.Sprintf("%d", v), nil
+		case float64:
+			return fmt.Sprintf("%v", v), nil
+		case bool:
+			return fmt.Sprintf("%t", v), nil
+		default:
+			if t, ok := val.(time.Time); ok {
+				return t.Format("2006-01-02"), nil
+			}
+			return nil, fmt.Errorf("expected string, got %T", val)
 		}
+
 	case "int":
-		switch val.(type) {
-		case int, int32, int64, uint, uint32, uint64:
+		switch v := val.(type) {
+		case int:
+			return v, nil
+		case int32:
+			return int(v), nil
+		case int64:
+			return int(v), nil
+		case uint:
+			return int(v), nil
+		case uint32:
+			return int(v), nil
+		case uint64:
+			return int(v), nil
+		case float64:
+			return int(v), nil
 		default:
-			return fmt.Errorf("expected int, got %T", val)
+			return nil, fmt.Errorf("expected int, got %T", val)
 		}
+
 	case "float":
-		switch val.(type) {
-		case float32, float64:
-		case int, int32, int64:
+		switch v := val.(type) {
+		case float64:
+			return v, nil
+		case float32:
+			return float64(v), nil
+		case int:
+			return float64(v), nil
+		case int64:
+			return float64(v), nil
 		default:
-			return fmt.Errorf("expected float, got %T", val)
+			return nil, fmt.Errorf("expected float, got %T", val)
 		}
+
 	case "bool":
 		if _, ok := val.(bool); !ok {
-			return fmt.Errorf("expected bool, got %T", val)
+			return nil, fmt.Errorf("expected bool, got %T", val)
 		}
+		return val, nil
+
 	case "[]string":
 		list, ok := val.([]interface{})
 		if !ok {
-			return fmt.Errorf("expected []string, got %T", val)
+			return nil, fmt.Errorf("expected []string, got %T", val)
 		}
+		result := make([]string, len(list))
 		for i, item := range list {
-			if _, ok := item.(string); !ok {
-				return fmt.Errorf("expected string at index %d, got %T", i, item)
+			s, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected string at index %d, got %T", i, item)
 			}
+			result[i] = s
 		}
+		return result, nil
+
 	case "[]int":
 		list, ok := val.([]interface{})
 		if !ok {
-			return fmt.Errorf("expected []int, got %T", val)
+			return nil, fmt.Errorf("expected []int, got %T", val)
 		}
+		result := make([]int, len(list))
 		for i, item := range list {
-			switch item.(type) {
-			case int, int32, int64, uint, uint32, uint64:
+			switch v := item.(type) {
+			case int:
+				result[i] = v
+			case int32:
+				result[i] = int(v)
+			case int64:
+				result[i] = int(v)
+			case float64:
+				result[i] = int(v)
 			default:
-				return fmt.Errorf("expected int at index %d, got %T", i, item)
+				return nil, fmt.Errorf("expected int at index %d, got %T", i, item)
 			}
 		}
+		return result, nil
+
 	case "map[string]string":
 		m, ok := val.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("expected map[string]string, got %T", val)
+			return nil, fmt.Errorf("expected map[string]string, got %T", val)
 		}
+		result := make(map[string]string)
 		for k, v := range m {
-			if _, ok := v.(string); !ok {
-				return fmt.Errorf("expected string value for key %q, got %T", k, v)
+			s, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("expected string value for key %q, got %T", k, v)
 			}
+			result[k] = s
 		}
+		return result, nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("unsupported type %q", expected)
 }
