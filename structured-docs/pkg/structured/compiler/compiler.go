@@ -14,29 +14,49 @@ import (
 	"github.com/romayengineer/structured-docs/pkg/structured/template"
 )
 
-type Result struct {
-	SourcePath string
-	OutputPath string
-	Format     string
+type SchemaLoader   func(fsys.FS, string) (map[string]*schema.TypeDefinition, error)
+type TemplateLoader func(fsys.FS, string) ([]*template.Template, error)
+type DataLoader     func(fsys.FS, string, map[string]*schema.TypeDefinition) ([]*data.DataFile, error)
+type Resolver      func([]*data.DataFile, []*template.Template, []string, map[string]*schema.TypeDefinition) ([]*resolver.Job, error)
+type Renderer      func(*resolver.Job) (string, error)
+
+type Compiler struct {
+	FS       fsys.FS
+	Schema   SchemaLoader
+	Template TemplateLoader
+	Data     DataLoader
+	Resolve  Resolver
+	Render   Renderer
 }
 
-func Compile(fsys fsys.FS, cfg *config.Config) ([]Result, error) {
-	types, err := schema.LoadAll(fsys, cfg.SchemaDir)
+func New(fs fsys.FS) *Compiler {
+	return &Compiler{
+		FS:       fs,
+		Schema:   schema.LoadAll,
+		Template: template.LoadAll,
+		Data:     data.LoadAll,
+		Resolve:  resolver.ResolveAll,
+		Render:   renderer.Render,
+	}
+}
+
+func (c *Compiler) Compile(cfg *config.Config) ([]Result, error) {
+	types, err := c.Schema(c.FS, cfg.SchemaDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading schemas: %w", err)
 	}
 
-	templates, err := template.LoadAll(fsys, cfg.TemplateDir)
+	templates, err := c.Template(c.FS, cfg.TemplateDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading templates: %w", err)
 	}
 
-	dataFiles, err := data.LoadAll(fsys, cfg.DataDir, types)
+	dataFiles, err := c.Data(c.FS, cfg.DataDir, types)
 	if err != nil {
 		return nil, fmt.Errorf("loading data: %w", err)
 	}
 
-	jobs, err := resolver.ResolveAll(dataFiles, templates, cfg.TemplateOrder, types)
+	jobs, err := c.Resolve(dataFiles, templates, cfg.TemplateOrder, types)
 	if err != nil {
 		return nil, fmt.Errorf("resolving templates: %w", err)
 	}
@@ -44,7 +64,7 @@ func Compile(fsys fsys.FS, cfg *config.Config) ([]Result, error) {
 	var results []Result
 
 	for _, job := range jobs {
-		output, err := renderer.Render(job)
+		output, err := c.Render(job)
 		if err != nil {
 			return nil, fmt.Errorf("rendering %s: %w", job.Data.SourcePath, err)
 		}
@@ -56,11 +76,11 @@ func Compile(fsys fsys.FS, cfg *config.Config) ([]Result, error) {
 		outName := base + job.Template.OutputExt
 		outPath := filepath.Join(cfg.OutputDir, relDir, outName)
 
-		if err := fsys.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
+		if err := c.FS.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
 			return nil, fmt.Errorf("creating output directory for %s: %w", outPath, err)
 		}
 
-		if err := fsys.WriteFile(outPath, []byte(output), 0644); err != nil {
+		if err := c.FS.WriteFile(outPath, []byte(output), 0644); err != nil {
 			return nil, fmt.Errorf("writing output %s: %w", outPath, err)
 		}
 
@@ -74,6 +94,20 @@ func Compile(fsys fsys.FS, cfg *config.Config) ([]Result, error) {
 	return results, nil
 }
 
-func CleanOutput(fsys fsys.FS, cfg *config.Config) error {
-	return fsys.RemoveAll(cfg.OutputDir)
+func (c *Compiler) CleanOutput(cfg *config.Config) error {
+	return c.FS.RemoveAll(cfg.OutputDir)
+}
+
+type Result struct {
+	SourcePath string
+	OutputPath string
+	Format     string
+}
+
+func Compile(fs fsys.FS, cfg *config.Config) ([]Result, error) {
+	return New(fs).Compile(cfg)
+}
+
+func CleanOutput(fs fsys.FS, cfg *config.Config) error {
+	return New(fs).CleanOutput(cfg)
 }

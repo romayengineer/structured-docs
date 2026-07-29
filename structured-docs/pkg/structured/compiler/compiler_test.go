@@ -1,12 +1,17 @@
 package compiler_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/romayengineer/structured-docs/pkg/structured/compiler"
 	"github.com/romayengineer/structured-docs/pkg/structured/config"
+	"github.com/romayengineer/structured-docs/pkg/structured/data"
 	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
+	"github.com/romayengineer/structured-docs/pkg/structured/resolver"
+	"github.com/romayengineer/structured-docs/pkg/structured/schema"
+	"github.com/romayengineer/structured-docs/pkg/structured/template"
 )
 
 func writeExampleProject(mem *fsys.MemFS) {
@@ -286,5 +291,131 @@ title: Hello
 	b, _ := mem.ReadFile("output/post.md")
 	if !strings.Contains(string(b), "custom:") {
 		t.Errorf("expected custom template, got: %s", string(b))
+	}
+}
+
+func TestOverrideRenderer(t *testing.T) {
+	c := &compiler.Compiler{
+		FS: fsys.NewMemFS(),
+		Schema: func(_ fsys.FS, _ string) (map[string]*schema.TypeDefinition, error) {
+			return map[string]*schema.TypeDefinition{
+				"post": {Name: "post", Fields: []schema.FieldDefinition{
+					{Name: "title", Type: "string", Required: true},
+				}},
+			}, nil
+		},
+		Template: func(_ fsys.FS, _ string) ([]*template.Template, error) {
+			return []*template.Template{
+				{FileName: "post.template.md", Content: "{{ .title }}", RequiredFields: []string{"title"}, OutputExt: ".md"},
+			}, nil
+		},
+		Data: func(_ fsys.FS, _ string, _ map[string]*schema.TypeDefinition) ([]*data.DataFile, error) {
+			return []*data.DataFile{
+				{SourcePath: "test.yml", TypeName: "post", Fields: map[string]interface{}{"title": "Hello"}},
+			}, nil
+		},
+		Resolve: func(df []*data.DataFile, _ []*template.Template, order []string, _ map[string]*schema.TypeDefinition) ([]*resolver.Job, error) {
+			var jobs []*resolver.Job
+			for _, d := range df {
+				jobs = append(jobs, &resolver.Job{Data: d, Template: &template.Template{FileName: order[0], OutputExt: ".md"}})
+			}
+			return jobs, nil
+		},
+		Render: func(job *resolver.Job) (string, error) {
+			return "mocked-render-output", nil
+		},
+	}
+
+	cfg := &config.Config{
+		OutputDir:     "output",
+		TemplateOrder: []string{"post.template.md"},
+	}
+
+	results, err := c.Compile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+
+	r := results[0]
+	if r.OutputPath != "output/test.md" {
+		t.Errorf("expected output/test.md, got %s", r.OutputPath)
+	}
+
+	b, _ := c.FS.ReadFile("output/test.md")
+	if string(b) != "mocked-render-output" {
+		t.Errorf("expected 'mocked-render-output', got %q", string(b))
+	}
+}
+
+func TestOverrideSchemaLoader(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("data/post.yml", []byte("type: custom\ntitle: Hello\n"), 0644)
+	mem.WriteFile("templates/custom.template.md", []byte("{{ .title }}"), 0644)
+
+	c := compiler.New(mem)
+	c.Schema = func(fs fsys.FS, dir string) (map[string]*schema.TypeDefinition, error) {
+		return map[string]*schema.TypeDefinition{
+			"custom": {
+				Name: "custom",
+				Fields: []schema.FieldDefinition{
+					{Name: "title", Type: "string", Required: true},
+				},
+			},
+		}, nil
+	}
+
+	cfg := &config.Config{
+		SchemaDir:     "schema",
+		DataDir:       "data",
+		TemplateDir:   "templates",
+		OutputDir:     "output",
+		TemplateOrder: []string{"custom.template.md"},
+	}
+
+	results, err := c.Compile(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+
+	b, _ := mem.ReadFile("output/post.md")
+	if string(b) != "Hello" {
+		t.Errorf("expected 'Hello', got %q", string(b))
+	}
+}
+
+func TestOverrideResolverFails(t *testing.T) {
+	c := &compiler.Compiler{
+		FS: fsys.NewMemFS(),
+		Schema: func(_ fsys.FS, _ string) (map[string]*schema.TypeDefinition, error) {
+			return map[string]*schema.TypeDefinition{"post": {Name: "post"}}, nil
+		},
+		Template: func(_ fsys.FS, _ string) ([]*template.Template, error) {
+			return nil, nil
+		},
+		Data: func(_ fsys.FS, _ string, _ map[string]*schema.TypeDefinition) ([]*data.DataFile, error) {
+			return nil, nil
+		},
+		Resolve: func(
+			_ []*data.DataFile,
+			_ []*template.Template,
+			_ []string,
+			_ map[string]*schema.TypeDefinition,
+		) ([]*resolver.Job, error) {
+			return nil, fmt.Errorf("mock resolver failure")
+		},
+	}
+
+	_, err := c.Compile(&config.Config{TemplateOrder: []string{"any.md"}})
+	if err == nil {
+		t.Fatal("expected error from mock resolver, got nil")
+	}
+	if !strings.Contains(err.Error(), "mock resolver failure") {
+		t.Errorf("expected 'mock resolver failure', got: %v", err)
 	}
 }
