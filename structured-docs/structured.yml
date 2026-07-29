@@ -1,0 +1,6 @@
+schema_dir: schema
+data_dir: data
+template_dir: templates
+output_dir: output
+template_order:
+  - post.template.md
