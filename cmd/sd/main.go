@@ -14,11 +14,19 @@ import (
 	"github.com/romayengineer/structured-docs/pkg/structured/watcher"
 )
 
+var version = "dev" // set via -ldflags at build time
+
 func main() {
+	showVersion := flag.Bool("version", false, "print version and exit")
 	configPath := flag.String("config", "structured.yml", "path to config file")
 	watchMode := flag.Bool("watch", false, "watch for file changes and recompile")
 	clean := flag.Bool("clean", false, "remove output directory before compiling")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("sd version", version)
+		os.Exit(0)
+	}
 
 	var fs fsys.FS = fsys.OS{}
 
