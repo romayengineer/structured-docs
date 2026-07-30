@@ -7,13 +7,27 @@ import (
 	"github.com/romayengineer/structured-docs/pkg/structured/config"
 )
 
-func ValidateContent(content string, rules *config.Validate, filePath string) error {
-	if rules == nil || rules.LinesBetweenHeaders == nil {
+type Validator interface {
+	Name() string
+	Validate(content string, filePath string, cfg *config.Validate) []error
+}
+
+func DefaultValidators() []Validator {
+	return []Validator{
+		&HeaderSpacingValidator{},
+	}
+}
+
+type HeaderSpacingValidator struct{}
+
+func (v *HeaderSpacingValidator) Name() string { return "header-spacing" }
+
+func (v *HeaderSpacingValidator) Validate(content string, filePath string, cfg *config.Validate) []error {
+	if cfg == nil || cfg.LinesBetweenHeaders == nil {
 		return nil
 	}
 
-	spacing := rules.LinesBetweenHeaders
-
+	spacing := cfg.LinesBetweenHeaders
 	lines := strings.Split(content, "\n")
 	inCodeBlock := false
 
@@ -44,8 +58,10 @@ func ValidateContent(content string, rules *config.Validate, filePath string) er
 		blankLines := countBlankLinesBefore(lines, i)
 		if blankLines != expected {
 			headerText := strings.TrimSpace(line)
-			return fmt.Errorf("%s:%d: expected %d blank lines before %s, got %d",
-				filePath, i+1, expected, headerText, blankLines)
+			return []error{
+				fmt.Errorf("%s:%d: expected %d blank lines before %s, got %d",
+					filePath, i+1, expected, headerText, blankLines),
+			}
 		}
 	}
 

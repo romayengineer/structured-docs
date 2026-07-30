@@ -137,13 +137,16 @@ func (c *Compiler) Compile(cfg *config.Config) ([]Result, error) {
 	}
 
 	if cfg.Validate != nil {
+		validators := validator.DefaultValidators()
 		for _, r := range results {
 			b, err := c.FS.ReadFile(r.OutputPath)
 			if err != nil {
 				return nil, fmt.Errorf("reading output for validation %s: %w", r.OutputPath, err)
 			}
-			if err := validator.ValidateContent(string(b), cfg.Validate, r.OutputPath); err != nil {
-				return nil, fmt.Errorf("validation: %w", err)
+			for _, v := range validators {
+				if errs := v.Validate(string(b), r.OutputPath, cfg.Validate); len(errs) > 0 {
+					return nil, fmt.Errorf("validation: %w", errs[0])
+				}
 			}
 		}
 	}
