@@ -16,6 +16,32 @@ import (
 
 var version = "dev" // set via -ldflags at build time
 
+func findSdocsDir() (string, bool) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", false
+	}
+	dir := wd
+	for {
+		// Check for sdocs/structured.yml (created by sd init)
+		candidate := filepath.Join(dir, "sdocs", "structured.yml")
+		if _, err := os.Stat(candidate); err == nil {
+			return filepath.Join(dir, "sdocs"), true
+		}
+		// Check for structured.yml directly (custom init dir or manual setup)
+		candidate = filepath.Join(dir, "structured.yml")
+		if _, err := os.Stat(candidate); err == nil {
+			return dir, true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", false
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "init" {
 		dir := "sdocs"
@@ -40,6 +66,15 @@ func main() {
 	}
 
 	var fs fsys.FS = fsys.OS{}
+
+	// Auto-detect sdocs/ directory when using default config path
+	if *configPath == "structured.yml" {
+		if sdocsDir, ok := findSdocsDir(); ok {
+			if err := os.Chdir(sdocsDir); err != nil {
+				log.Fatalf("chdir to %s: %v", sdocsDir, err)
+			}
+		}
+	}
 
 	cfg, err := config.Load(fs, *configPath)
 	if err != nil {
