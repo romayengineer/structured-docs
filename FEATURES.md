@@ -2,6 +2,7 @@
 
 ## Backlog
 
+- [ ] Compiler: create REDME.md as an index file with all the links to all .md files created
 - [ ] Validator: check that all hyperlinks in generated markdown resolve (link checker)
 - [ ] Validator: enforce max file size for generated `.md` output
 - [ ] Validator: flag broken internal anchors (`[](#nonexistent-section)`)
