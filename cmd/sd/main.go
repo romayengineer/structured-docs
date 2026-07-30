@@ -18,7 +18,7 @@ var version = "dev" // set via -ldflags at build time
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "init" {
-		dir := "."
+		dir := "sdocs"
 		if len(os.Args) > 2 {
 			dir = os.Args[2]
 		}
