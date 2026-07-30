@@ -32,6 +32,7 @@ structured-docs/
 │   ├── data/blog/hello-world.yml
 │   ├── templates/post.template.md
 │   └── structured.yml
+├── FEATURES.md                      # Feature backlog & implemented list
 ├── docs/
 │   ├── PLAN.md                     # Architecture plan
 │   └── HUGO-ANALYSIS.md            # Hugo comparison analysis
