@@ -1,4 +1,4 @@
-.PHONY: all build test clean
+.PHONY: all build test clean run
 
 all: build
 
@@ -11,3 +11,6 @@ test:
 clean:
 	go clean
 	rm -f sd
+
+run: build
+	cd example && ../sd
