@@ -543,8 +543,8 @@ func TestIntegration_ReadmeCustomPath(t *testing.T) {
 	if err != nil {
 		t.Fatal("README.md not found at output/blog/README.md")
 	}
-	if !strings.Contains(string(b), "post") {
-		t.Error("README should contain post")
+	if !strings.Contains(string(b), "../post") {
+		t.Errorf("expected link to be adjusted (relative from blog/), got:\n%s", string(b))
 	}
 }
 
