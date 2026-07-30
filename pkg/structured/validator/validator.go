@@ -15,6 +15,7 @@ type Validator interface {
 func DefaultValidators() []Validator {
 	return []Validator{
 		&HeaderSpacingValidator{},
+		&FileNameValidator{},
 	}
 }
 

@@ -18,6 +18,12 @@ type Config struct {
 
 type Validate struct {
 	LinesBetweenHeaders *HeaderSpacing `yaml:"lines_between_headers"`
+	FileName            *FileNameRule  `yaml:"file_name"`
+}
+
+type FileNameRule struct {
+	Style   string `yaml:"style"`
+	Pattern string `yaml:"pattern"`
 }
 
 type HeaderSpacing struct {

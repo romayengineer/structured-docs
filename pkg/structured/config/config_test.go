@@ -148,6 +148,31 @@ validate:
 	}
 }
 
+func TestLoad_WithFileRule(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("validated.yml", []byte(`
+template_order:
+  - post.template.md
+validate:
+  file_name:
+    style: kebab
+`), 0644)
+
+	cfg, err := config.Load(mem, "validated.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Validate == nil {
+		t.Fatal("expected validate config, got nil")
+	}
+	if cfg.Validate.FileName == nil {
+		t.Fatal("expected FileName config, got nil")
+	}
+	if cfg.Validate.FileName.Style != "kebab" {
+		t.Errorf("expected style=kebab, got %q", cfg.Validate.FileName.Style)
+	}
+}
+
 func TestLoad_WithoutValidate(t *testing.T) {
 	mem := fsys.NewMemFS()
 	mem.WriteFile("no-validate.yml", []byte(`
