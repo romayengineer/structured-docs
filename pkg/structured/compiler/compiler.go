@@ -121,6 +121,14 @@ func (c *Compiler) Compile(cfg *config.Config) ([]Result, error) {
 		outName := base + job.Template.OutputExt
 		outPath := filepath.Join(cfg.OutputDir, relDir, outName)
 
+		if cfg.Validate != nil {
+			for _, v := range validator.DefaultValidators() {
+				if errs := v.Validate(output, outPath, cfg.Validate); len(errs) > 0 {
+					return nil, fmt.Errorf("validation: %w", errs[0])
+				}
+			}
+		}
+
 		if err := c.FS.MkdirAll(filepath.Dir(outPath), 0755); err != nil {
 			return nil, fmt.Errorf("creating output directory for %s: %w", outPath, err)
 		}
@@ -134,21 +142,6 @@ func (c *Compiler) Compile(cfg *config.Config) ([]Result, error) {
 			OutputPath: outPath,
 			Format:     strings.TrimPrefix(job.Template.OutputExt, "."),
 		})
-	}
-
-	if cfg.Validate != nil {
-		validators := validator.DefaultValidators()
-		for _, r := range results {
-			b, err := c.FS.ReadFile(r.OutputPath)
-			if err != nil {
-				return nil, fmt.Errorf("reading output for validation %s: %w", r.OutputPath, err)
-			}
-			for _, v := range validators {
-				if errs := v.Validate(string(b), r.OutputPath, cfg.Validate); len(errs) > 0 {
-					return nil, fmt.Errorf("validation: %w", errs[0])
-				}
-			}
-		}
 	}
 
 	return results, nil
