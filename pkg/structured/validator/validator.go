@@ -15,7 +15,18 @@ func ValidateContent(content string, rules *config.Validate, filePath string) er
 	spacing := rules.LinesBetweenHeaders
 
 	lines := strings.Split(content, "\n")
+	inCodeBlock := false
+
 	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") {
+			inCodeBlock = !inCodeBlock
+			continue
+		}
+		if inCodeBlock {
+			continue
+		}
+
 		level := headerLevel(line)
 		if level == 0 {
 			continue
