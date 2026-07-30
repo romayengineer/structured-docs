@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 
 	"github.com/romayengineer/structured-docs/pkg/structured/compiler"
 	"github.com/romayengineer/structured-docs/pkg/structured/config"
@@ -39,7 +40,7 @@ func main() {
 	}
 
 	for _, r := range results {
-		fmt.Printf("  %s → %s (%s)\n", r.SourcePath, r.OutputPath, r.Format)
+		fmt.Printf("  %s → %s (%s)\n", filepath.Join(cfg.DataDir, r.SourcePath), r.OutputPath, r.Format)
 	}
 	fmt.Printf("compiled %d file(s)\n", len(results))
 
