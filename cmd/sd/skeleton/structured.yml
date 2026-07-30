@@ -1,17 +1,17 @@
-schema_dir: schema
-data_dir: data
-template_dir: templates
-output_dir: ../docs
-readme_path: ../README.md
-template_order:
+schema_dir: schema                 # directory for YAML type schemas (.yml)
+data_dir: data                     # directory for content data files (.yml)
+template_dir: templates            # directory for Go templates (.template.md / .template.html)
+output_dir: ../docs                # directory for generated .md/.html output
+readme_path: ../README.md          # path (relative to output_dir) for the generated index file
+template_order:                    # template resolution order — first match wins
   - post.template.md
-validate:
-  lines_between_headers:
+validate:                          # optional validation rules (all shown here)
+  lines_between_headers:           # enforce exact blank lines between ## sections
     h2: 1
     h3: 1
     h4: 1
     default: 1
-  file_name:
-    style: kebab
-    allow_leading_digit: false
-generate_readme: true
+  file_name:                       # enforce file naming conventions on generated .md files
+    style: kebab                   # kebab | snake | camel | lowercase | (or use `pattern:` for a custom regex)
+    allow_leading_digit: false     # true (default): 123-post.md OK; false: rejected
+generate_readme: true              # generate README.md index in the output directory (set false to disable)
