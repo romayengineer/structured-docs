@@ -104,3 +104,62 @@ func TestLoad_MissingTemplateOrder(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 }
+
+func TestLoad_WithValidate(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("validated.yml", []byte(`
+schema_dir: schema
+data_dir: data
+template_dir: templates
+output_dir: output
+template_order:
+  - post.template.md
+validate:
+  lines_between_headers:
+    h2: 2
+    h3: 1
+    default: 1
+`), 0644)
+
+	cfg, err := config.Load(mem, "validated.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if cfg.Validate == nil {
+		t.Fatal("expected validate config, got nil")
+	}
+	if cfg.Validate.LinesBetweenHeaders == nil {
+		t.Fatal("expected LinesBetweenHeaders config, got nil")
+	}
+
+	s := cfg.Validate.LinesBetweenHeaders
+	if s.H2 != 2 {
+		t.Errorf("expected H2=2, got %d", s.H2)
+	}
+	if s.H3 != 1 {
+		t.Errorf("expected H3=1, got %d", s.H3)
+	}
+	if s.Default != 1 {
+		t.Errorf("expected Default=1, got %d", s.Default)
+	}
+	if s.H1 != 0 {
+		t.Errorf("expected H1=0 (unset), got %d", s.H1)
+	}
+}
+
+func TestLoad_WithoutValidate(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("no-validate.yml", []byte(`
+template_order:
+  - post.template.md
+`), 0644)
+
+	cfg, err := config.Load(mem, "no-validate.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Validate != nil {
+		t.Error("expected nil validate, got non-nil")
+	}
+}

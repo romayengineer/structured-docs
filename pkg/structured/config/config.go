@@ -8,11 +8,24 @@ import (
 )
 
 type Config struct {
-	SchemaDir     string   `yaml:"schema_dir"`
-	DataDir       string   `yaml:"data_dir"`
-	TemplateDir   string   `yaml:"template_dir"`
-	OutputDir     string   `yaml:"output_dir"`
-	TemplateOrder []string `yaml:"template_order"`
+	SchemaDir     string    `yaml:"schema_dir"`
+	DataDir       string    `yaml:"data_dir"`
+	TemplateDir   string    `yaml:"template_dir"`
+	OutputDir     string    `yaml:"output_dir"`
+	TemplateOrder []string  `yaml:"template_order"`
+	Validate      *Validate `yaml:"validate"`
+}
+
+type Validate struct {
+	LinesBetweenHeaders *HeaderSpacing `yaml:"lines_between_headers"`
+}
+
+type HeaderSpacing struct {
+	H1      int `yaml:"h1"`
+	H2      int `yaml:"h2"`
+	H3      int `yaml:"h3"`
+	H4      int `yaml:"h4"`
+	Default int `yaml:"default"`
 }
 
 func Default() *Config {

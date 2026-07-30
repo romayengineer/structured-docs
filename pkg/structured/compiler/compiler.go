@@ -12,6 +12,7 @@ import (
 	"github.com/romayengineer/structured-docs/pkg/structured/resolver"
 	"github.com/romayengineer/structured-docs/pkg/structured/schema"
 	"github.com/romayengineer/structured-docs/pkg/structured/template"
+	"github.com/romayengineer/structured-docs/pkg/structured/validator"
 )
 
 type SchemaLoader interface {
@@ -133,6 +134,18 @@ func (c *Compiler) Compile(cfg *config.Config) ([]Result, error) {
 			OutputPath: outPath,
 			Format:     strings.TrimPrefix(job.Template.OutputExt, "."),
 		})
+	}
+
+	if cfg.Validate != nil {
+		for _, r := range results {
+			b, err := c.FS.ReadFile(r.OutputPath)
+			if err != nil {
+				return nil, fmt.Errorf("reading output for validation %s: %w", r.OutputPath, err)
+			}
+			if err := validator.ValidateContent(string(b), cfg.Validate, r.OutputPath); err != nil {
+				return nil, fmt.Errorf("validation: %w", err)
+			}
+		}
 	}
 
 	return results, nil

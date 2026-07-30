@@ -601,3 +601,79 @@ func TestCompile_WriteFileError(t *testing.T) {
 		t.Errorf("expected mock write error, got: %v", err)
 	}
 }
+
+func TestCompile_ValidationPass(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("schema/post.yml", []byte(`
+fields:
+  - name: title
+    type: string
+  - name: body
+    type: string
+`), 0644)
+	mem.WriteFile("data/post.yml", []byte(`
+type: post
+title: Test
+body: |
+  ## Section A
+  content
+
+  ## Section B
+`), 0644)
+	mem.WriteFile("templates/post.template.md", []byte(`{{ .body }}`), 0644)
+
+	cfg := &config.Config{
+		SchemaDir:     "schema",
+		DataDir:       "data",
+		TemplateDir:   "templates",
+		OutputDir:     "output",
+		TemplateOrder: []string{"post.template.md"},
+		Validate: &config.Validate{
+			LinesBetweenHeaders: &config.HeaderSpacing{H2: 1},
+		},
+	}
+
+	_, err := compiler.Compile(mem, cfg)
+	if err != nil {
+		t.Fatalf("expected validation to pass, got: %v", err)
+	}
+}
+
+func TestCompile_ValidationFail(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("schema/post.yml", []byte(`
+fields:
+  - name: title
+    type: string
+  - name: body
+    type: string
+`), 0644)
+	mem.WriteFile("data/post.yml", []byte(`
+type: post
+title: Test
+body: |
+  ## Section A
+  content
+  ## Section B
+`), 0644)
+	mem.WriteFile("templates/post.template.md", []byte(`{{ .body }}`), 0644)
+
+	cfg := &config.Config{
+		SchemaDir:     "schema",
+		DataDir:       "data",
+		TemplateDir:   "templates",
+		OutputDir:     "output",
+		TemplateOrder: []string{"post.template.md"},
+		Validate: &config.Validate{
+			LinesBetweenHeaders: &config.HeaderSpacing{H2: 1},
+		},
+	}
+
+	_, err := compiler.Compile(mem, cfg)
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "expected 1 blank lines") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
