@@ -23,10 +23,10 @@ func findSdocsDir() (string, bool) {
 	}
 	dir := wd
 	for {
-		// Check for sdocs/structured.yml (created by sd init)
-		candidate := filepath.Join(dir, "sdocs", "structured.yml")
+		// Check for .sd/structured.yml (created by sd init)
+		candidate := filepath.Join(dir, ".sd", "structured.yml")
 		if _, err := os.Stat(candidate); err == nil {
-			return filepath.Join(dir, "sdocs"), true
+			return filepath.Join(dir, ".sd"), true
 		}
 		// Check for structured.yml directly (custom init dir or manual setup)
 		candidate = filepath.Join(dir, "structured.yml")
@@ -44,7 +44,7 @@ func findSdocsDir() (string, bool) {
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "init" {
-		dir := "sdocs"
+		dir := ".sd"
 		if len(os.Args) > 2 {
 			dir = os.Args[2]
 		}
