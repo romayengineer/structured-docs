@@ -139,7 +139,72 @@ func (c *Compiler) Compile(cfg *config.Config) ([]Result, error) {
 }
 
 func (c *Compiler) CleanOutput(cfg *config.Config) error {
-	return c.FS.RemoveAll(cfg.OutputDir)
+	outputAbs, err := filepath.Abs(cfg.OutputDir)
+	if err != nil {
+		return fmt.Errorf("resolving output dir: %w", err)
+	}
+
+	var sourceDirs []string
+	for _, dir := range []string{cfg.SchemaDir, cfg.DataDir, cfg.TemplateDir} {
+		if dir == "" {
+			continue
+		}
+		abs, err := filepath.Abs(dir)
+		if err != nil {
+			return fmt.Errorf("resolving %s: %w", dir, err)
+		}
+		sourceDirs = append(sourceDirs, abs)
+	}
+
+	needsSmartClean := false
+	for _, src := range sourceDirs {
+		if isInside(src, outputAbs) {
+			needsSmartClean = true
+			break
+		}
+	}
+
+	if !needsSmartClean {
+		return c.FS.RemoveAll(cfg.OutputDir)
+	}
+
+	entries, err := c.FS.ReadDir(cfg.OutputDir)
+	if err != nil {
+		return nil
+	}
+
+	for _, e := range entries {
+		if e.Name() == ".git" || e.Name() == ".gitignore" {
+			continue
+		}
+
+		protect := false
+		for _, src := range sourceDirs {
+			if isInside(src, filepath.Join(outputAbs, e.Name())) {
+				protect = true
+				break
+			}
+		}
+		if protect {
+			continue
+		}
+
+		if err := c.FS.RemoveAll(filepath.Join(cfg.OutputDir, e.Name())); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func isInside(child, parent string) bool {
+	parent = filepath.Clean(parent)
+	child = filepath.Clean(child)
+	if parent == child {
+		return true
+	}
+	prefix := parent + string(filepath.Separator)
+	return strings.HasPrefix(child, prefix)
 }
 
 type Result struct {

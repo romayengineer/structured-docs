@@ -222,6 +222,50 @@ func TestCleanOutput(t *testing.T) {
 	}
 }
 
+func TestCleanOutput_SmartClean(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.MkdirAll("output/schema", 0755)
+	mem.WriteFile("output/schema/post.yml", []byte("fields:"), 0644)
+	mem.MkdirAll("output/data/blog", 0755)
+	mem.WriteFile("output/data/blog/post.yml", []byte("type: post"), 0644)
+	mem.WriteFile("output/blog/generated.md", []byte("content"), 0644)
+	mem.WriteFile("output/other.txt", []byte("delete"), 0644)
+	mem.MkdirAll("output/.git", 0755)
+	mem.WriteFile("output/.git/HEAD", []byte("ref"), 0644)
+	mem.WriteFile("output/.gitignore", []byte("*.md\n"), 0644)
+
+	cfg := &config.Config{
+		OutputDir:   "output",
+		SchemaDir:   "output/schema",
+		DataDir:     "output/data",
+		TemplateDir: "output/templates",
+	}
+
+	if err := compiler.CleanOutput(mem, cfg); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := mem.ReadFile("output/schema/post.yml"); err != nil {
+		t.Error("schema dir should survive clean")
+	}
+	if _, err := mem.ReadFile("output/data/blog/post.yml"); err != nil {
+		t.Error("data dir should survive clean")
+	}
+	if _, err := mem.ReadFile("output/.git/HEAD"); err != nil {
+		t.Error(".git should survive clean")
+	}
+	if _, err := mem.ReadFile("output/.gitignore"); err != nil {
+		t.Error(".gitignore should survive clean")
+	}
+
+	if _, err := mem.ReadFile("output/blog/generated.md"); err == nil {
+		t.Error("generated output should be deleted")
+	}
+	if _, err := mem.ReadFile("output/other.txt"); err == nil {
+		t.Error("non-source files should be deleted")
+	}
+}
+
 func TestFieldTypeCoercion(t *testing.T) {
 	mem := fsys.NewMemFS()
 
