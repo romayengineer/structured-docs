@@ -460,3 +460,44 @@ title: Hello
 		t.Errorf("expected custom template, got %q", files[0].ExplicitTemplate)
 	}
 }
+
+func TestLoadAll_YamlExtension(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("data/page.yaml", []byte(`
+type: page
+title: Hello
+`), 0644)
+
+	types := map[string]*schema.TypeDefinition{
+		"page": {Name: "page", Fields: []schema.FieldDefinition{{Name: "title", Type: "string"}}},
+	}
+
+	files, err := LoadAll(mem, "data", types)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("expected 1 file, got %d", len(files))
+	}
+	if files[0].SourcePath != "page.yaml" {
+		t.Errorf("expected page.yaml, got %q", files[0].SourcePath)
+	}
+}
+
+func TestLoadAll_MissingRequiredField(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("data/post.yml", []byte(`
+type: post
+`), 0644)
+
+	types := map[string]*schema.TypeDefinition{
+		"post": {Name: "post", Fields: []schema.FieldDefinition{
+			{Name: "title", Type: "string", Required: true},
+		}},
+	}
+
+	_, err := LoadAll(mem, "data", types)
+	if err == nil {
+		t.Fatal("expected error for missing required field, got nil")
+	}
+}

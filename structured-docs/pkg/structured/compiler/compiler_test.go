@@ -2,6 +2,7 @@ package compiler_test
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -13,6 +14,22 @@ import (
 	"github.com/romayengineer/structured-docs/pkg/structured/schema"
 	"github.com/romayengineer/structured-docs/pkg/structured/template"
 )
+
+type failMkdirAllFS struct {
+	fsys.FS
+}
+
+func (f *failMkdirAllFS) MkdirAll(string, os.FileMode) error {
+	return fmt.Errorf("mock mkdir error")
+}
+
+type failWriteFileFS struct {
+	fsys.FS
+}
+
+func (f *failWriteFileFS) WriteFile(string, []byte, os.FileMode) error {
+	return fmt.Errorf("mock write error")
+}
 
 func writeExampleProject(mem *fsys.MemFS) {
 	mem.WriteFile("schema/post.yml", []byte(`
@@ -417,5 +434,126 @@ func TestOverrideResolverFails(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "mock resolver failure") {
 		t.Errorf("expected 'mock resolver failure', got: %v", err)
+	}
+}
+
+func TestCompile_SchemaError(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeExampleProject(mem)
+	c := compiler.New(mem)
+	c.Schema = compiler.SchemaLoaderFunc(func(_ fsys.FS, _ string) (map[string]*schema.TypeDefinition, error) {
+		return nil, fmt.Errorf("mock schema error")
+	})
+
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+	}
+	_, err := c.Compile(cfg)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mock schema error") {
+		t.Errorf("expected mock schema error, got: %v", err)
+	}
+}
+
+func TestCompile_TemplateError(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeExampleProject(mem)
+	c := compiler.New(mem)
+	c.Template = compiler.TemplateLoaderFunc(func(_ fsys.FS, _ string) ([]*template.Template, error) {
+		return nil, fmt.Errorf("mock template error")
+	})
+
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+	}
+	_, err := c.Compile(cfg)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mock template error") {
+		t.Errorf("expected mock template error, got: %v", err)
+	}
+}
+
+func TestCompile_DataError(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeExampleProject(mem)
+	c := compiler.New(mem)
+	c.Data = compiler.DataLoaderFunc(func(_ fsys.FS, _ string, _ map[string]*schema.TypeDefinition) ([]*data.DataFile, error) {
+		return nil, fmt.Errorf("mock data error")
+	})
+
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+	}
+	_, err := c.Compile(cfg)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mock data error") {
+		t.Errorf("expected mock data error, got: %v", err)
+	}
+}
+
+func TestCompile_RenderError(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeExampleProject(mem)
+	c := compiler.New(mem)
+	c.Render = compiler.RendererFunc(func(_ *resolver.Job) (string, error) {
+		return "", fmt.Errorf("mock render error")
+	})
+
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+	}
+	_, err := c.Compile(cfg)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mock render error") {
+		t.Errorf("expected mock render error, got: %v", err)
+	}
+}
+
+func TestCompile_MkdirAllError(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeExampleProject(mem)
+	efs := &failMkdirAllFS{FS: mem}
+
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+	}
+	_, err := compiler.Compile(efs, cfg)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mock mkdir error") {
+		t.Errorf("expected mock mkdir error, got: %v", err)
+	}
+}
+
+func TestCompile_WriteFileError(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeExampleProject(mem)
+
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+	}
+
+	efs := &failWriteFileFS{FS: mem}
+	_, err := compiler.Compile(efs, cfg)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mock write error") {
+		t.Errorf("expected mock write error, got: %v", err)
 	}
 }

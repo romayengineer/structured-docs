@@ -226,3 +226,25 @@ func TestLoadAll_SubdirectoryTemplate(t *testing.T) {
 		t.Errorf("expected blog/post.template.md, got %q", templates[0].FileName)
 	}
 }
+
+func TestExtractFields_RangeElse(t *testing.T) {
+	content := `{{ range .items }}{{ . }}{{ else }}{{ .fallback }}{{ end }}`
+	fields, err := extractFields(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 2 {
+		t.Fatalf("expected 2 fields (items, fallback), got %v", fields)
+	}
+}
+
+func TestExtractFields_WithElse(t *testing.T) {
+	content := `{{ with .author }}{{ .name }}{{ else }}{{ .fallback }}{{ end }}`
+	fields, err := extractFields(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 3 {
+		t.Fatalf("expected 3 fields (author, name, fallback), got %v", fields)
+	}
+}
