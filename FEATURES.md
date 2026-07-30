@@ -2,7 +2,6 @@
 
 ## Backlog
 
-- [ ] Compiler: create REDME.md as an index file with all the links to all .md files created
 - [ ] Validator: check that all hyperlinks in generated markdown resolve (link checker)
 - [ ] Validator: enforce max file size for generated `.md` output
 - [ ] Validator: flag broken internal anchors (`[](#nonexistent-section)`)
@@ -19,6 +18,7 @@
 
 ## Implemented
 
+- [x] Compiler: generate `README.md` index with links to all compiled files (default on, disabled via `generate_readme: false`)
 - [x] Pluggable validator interface (`Validator`) with `DefaultValidators()`
 - [x] Validator: header spacing (`lines_between_headers` for h1–h4)
 - [x] Validator: file name style (kebab, snake, camel, lowercase + custom regex)

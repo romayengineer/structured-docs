@@ -12,8 +12,9 @@ type Config struct {
 	DataDir       string    `yaml:"data_dir"`
 	TemplateDir   string    `yaml:"template_dir"`
 	OutputDir     string    `yaml:"output_dir"`
-	TemplateOrder []string  `yaml:"template_order"`
-	Validate      *Validate `yaml:"validate"`
+	TemplateOrder   []string  `yaml:"template_order"`
+	Validate        *Validate `yaml:"validate"`
+	GenerateReadme  *bool     `yaml:"generate_readme"`
 }
 
 type Validate struct {

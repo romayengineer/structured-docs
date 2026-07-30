@@ -218,6 +218,42 @@ validate:
 	}
 }
 
+func TestLoad_GenerateReadmeDefault(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("config.yml", []byte(`
+template_order:
+  - post.template.md
+`), 0644)
+
+	cfg, err := config.Load(mem, "config.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GenerateReadme != nil {
+		t.Error("expected GenerateReadme=nil when not set, got non-nil")
+	}
+}
+
+func TestLoad_GenerateReadmeExplicit(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("config.yml", []byte(`
+template_order:
+  - post.template.md
+generate_readme: false
+`), 0644)
+
+	cfg, err := config.Load(mem, "config.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GenerateReadme == nil {
+		t.Fatal("expected GenerateReadme to be set, got nil")
+	}
+	if *cfg.GenerateReadme {
+		t.Error("expected GenerateReadme=false, got true")
+	}
+}
+
 func TestLoad_WithoutValidate(t *testing.T) {
 	mem := fsys.NewMemFS()
 	mem.WriteFile("no-validate.yml", []byte(`
