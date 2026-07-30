@@ -1,7 +1,8 @@
 schema_dir: schema
 data_dir: data
 template_dir: templates
-output_dir: output
+output_dir: ../docs
+readme_path: ../README.md
 template_order:
   - post.template.md
 validate:
