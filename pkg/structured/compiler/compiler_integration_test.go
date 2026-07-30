@@ -527,6 +527,27 @@ func TestIntegration_ReadmeDisabled(t *testing.T) {
 	}
 }
 
+func TestIntegration_ReadmeCustomPath(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeProject(mem, "post.yml", "content")
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+		ReadmePath: "blog/README.md",
+	}
+	_, err := compiler.Compile(mem, cfg)
+	if err != nil {
+		t.Fatalf("expected success, got: %v", err)
+	}
+	b, err := mem.ReadFile("output/blog/README.md")
+	if err != nil {
+		t.Fatal("README.md not found at output/blog/README.md")
+	}
+	if !strings.Contains(string(b), "post") {
+		t.Error("README should contain post")
+	}
+}
+
 func TestIntegration_ReadmeDefaultEnabled(t *testing.T) {
 	mem := fsys.NewMemFS()
 	writeProject(mem, "post.yml", "content")

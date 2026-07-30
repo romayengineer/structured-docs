@@ -218,6 +218,23 @@ validate:
 	}
 }
 
+func TestLoad_ReadmePathExplicit(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("config.yml", []byte(`
+template_order:
+  - post.template.md
+readme_path: blog/README.md
+`), 0644)
+
+	cfg, err := config.Load(mem, "config.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ReadmePath != "blog/README.md" {
+		t.Errorf("expected readme_path=blog/README.md, got %q", cfg.ReadmePath)
+	}
+}
+
 func TestLoad_GenerateReadmeDefault(t *testing.T) {
 	mem := fsys.NewMemFS()
 	mem.WriteFile("config.yml", []byte(`

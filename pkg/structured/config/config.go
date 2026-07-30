@@ -15,6 +15,7 @@ type Config struct {
 	TemplateOrder   []string  `yaml:"template_order"`
 	Validate        *Validate `yaml:"validate"`
 	GenerateReadme  *bool     `yaml:"generate_readme"`
+	ReadmePath      string    `yaml:"readme_path"`
 }
 
 type Validate struct {
