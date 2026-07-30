@@ -19,6 +19,15 @@ func (v *FileNameValidator) Validate(content string, filePath string, cfg *confi
 	}
 
 	rule := cfg.FileName
+
+	base := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
+
+	if rule.AllowLeadingDigit != nil && !*rule.AllowLeadingDigit {
+		if len(base) > 0 && base[0] >= '0' && base[0] <= '9' {
+			return []error{fmt.Errorf("%s: file name %q must not start with a digit", filePath, base)}
+		}
+	}
+
 	pattern := rule.Pattern
 
 	if pattern == "" {
@@ -41,7 +50,6 @@ func (v *FileNameValidator) Validate(content string, filePath string, cfg *confi
 		return []error{fmt.Errorf("%s: invalid file_name pattern %q: %w", filePath, pattern, err)}
 	}
 
-	base := strings.TrimSuffix(filepath.Base(filePath), filepath.Ext(filePath))
 	if !re.MatchString(base) {
 		desc := rule.Style
 		if desc == "" {

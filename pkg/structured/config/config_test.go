@@ -173,6 +173,51 @@ validate:
 	}
 }
 
+func TestLoad_WithAllowLeadingDigit(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("validated.yml", []byte(`
+template_order:
+  - post.template.md
+validate:
+  file_name:
+    style: kebab
+    allow_leading_digit: false
+`), 0644)
+
+	cfg, err := config.Load(mem, "validated.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Validate.FileName == nil {
+		t.Fatal("expected FileName config, got nil")
+	}
+	if cfg.Validate.FileName.AllowLeadingDigit == nil {
+		t.Fatal("expected AllowLeadingDigit to be set, got nil")
+	}
+	if *cfg.Validate.FileName.AllowLeadingDigit {
+		t.Error("expected AllowLeadingDigit=false, got true")
+	}
+}
+
+func TestLoad_AllowLeadingDigitDefaultIsNil(t *testing.T) {
+	mem := fsys.NewMemFS()
+	mem.WriteFile("no-ald.yml", []byte(`
+template_order:
+  - post.template.md
+validate:
+  file_name:
+    style: kebab
+`), 0644)
+
+	cfg, err := config.Load(mem, "no-ald.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Validate.FileName.AllowLeadingDigit != nil {
+		t.Error("expected AllowLeadingDigit=nil when not set, got non-nil")
+	}
+}
+
 func TestLoad_WithoutValidate(t *testing.T) {
 	mem := fsys.NewMemFS()
 	mem.WriteFile("no-validate.yml", []byte(`

@@ -22,8 +22,9 @@ type Validate struct {
 }
 
 type FileNameRule struct {
-	Style   string `yaml:"style"`
-	Pattern string `yaml:"pattern"`
+	Style             string `yaml:"style"`
+	Pattern           string `yaml:"pattern"`
+	AllowLeadingDigit *bool  `yaml:"allow_leading_digit"`
 }
 
 type HeaderSpacing struct {

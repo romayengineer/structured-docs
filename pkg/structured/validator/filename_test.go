@@ -1,6 +1,7 @@
 package validator_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/romayengineer/structured-docs/pkg/structured/config"
@@ -123,6 +124,81 @@ func TestFileName_InvalidPattern(t *testing.T) {
 	errs := fnVal.Validate("content", "output/blog/x.md", r)
 	if len(errs) == 0 {
 		t.Fatal("expected error for invalid regex, got nil")
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestFileName_LeadingDigitUnsetAllowsDigits(t *testing.T) {
+	r := &config.Validate{
+		FileName: &config.FileNameRule{Style: "kebab"},
+	}
+	errs := fnVal.Validate("content", "output/blog/123-post.md", r)
+	if len(errs) > 0 {
+		t.Fatalf("expected no error (default allows leading digits), got: %v", errs[0])
+	}
+}
+
+func TestFileName_LeadingDigitExplicitTrueAllows(t *testing.T) {
+	r := &config.Validate{
+		FileName: &config.FileNameRule{
+			Style:             "kebab",
+			AllowLeadingDigit: boolPtr(true),
+		},
+	}
+	errs := fnVal.Validate("content", "output/blog/123-post.md", r)
+	if len(errs) > 0 {
+		t.Fatalf("expected no error (explicit true allows digits), got: %v", errs[0])
+	}
+}
+
+func TestFileName_LeadingDigitFalseRejects(t *testing.T) {
+	r := &config.Validate{
+		FileName: &config.FileNameRule{
+			Style:             "kebab",
+			AllowLeadingDigit: boolPtr(false),
+		},
+	}
+	errs := fnVal.Validate("content", "output/blog/123-post.md", r)
+	if len(errs) == 0 {
+		t.Fatal("expected error for leading digit, got nil")
+	}
+	if errs[0].Error() != `output/blog/123-post.md: file name "123-post" must not start with a digit` {
+		t.Errorf("unexpected error: %v", errs[0])
+	}
+}
+
+func TestFileName_LeadingDigitFalseValidName(t *testing.T) {
+	r := &config.Validate{
+		FileName: &config.FileNameRule{
+			Style:             "kebab",
+			AllowLeadingDigit: boolPtr(false),
+		},
+	}
+	errs := fnVal.Validate("content", "output/blog/go-post.md", r)
+	if len(errs) > 0 {
+		t.Fatalf("expected no error (valid name with leading digit false), got: %v", errs[0])
+	}
+}
+
+func TestFileName_LeadingDigitFalseWithPattern(t *testing.T) {
+	r := &config.Validate{
+		FileName: &config.FileNameRule{
+			Pattern:           `^[a-zA-Z0-9]+$`,
+			AllowLeadingDigit: boolPtr(false),
+		},
+	}
+	errs := fnVal.Validate("content", "output/blog/abc123.md", r)
+	if len(errs) > 0 {
+		t.Fatalf("expected no error (pattern passes, leading digit ok for abc), got: %v", errs[0])
+	}
+
+	errs2 := fnVal.Validate("content", "output/blog/123abc.md", r)
+	if len(errs2) == 0 {
+		t.Fatal("expected error (pattern passes but leading digit blocked), got nil")
+	}
+	if !strings.Contains(errs2[0].Error(), "must not start with a digit") {
+		t.Errorf("unexpected error: %v", errs2[0])
 	}
 }
 

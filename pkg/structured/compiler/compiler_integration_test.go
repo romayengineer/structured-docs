@@ -11,6 +11,8 @@ import (
 	"github.com/romayengineer/structured-docs/pkg/structured/fsys"
 )
 
+func boolPtr(b bool) *bool { return &b }
+
 func writeProject(mem *fsys.MemFS, dataName, body string) {
 	mem.WriteFile("schema/post.yml", []byte(`
 fields:
@@ -371,6 +373,108 @@ func TestIntegration_NoValidateConfigSkipsAll(t *testing.T) {
 	_, err := compiler.Compile(mem, cfg)
 	if err != nil {
 		t.Fatalf("no validate config should skip all validators, got: %v", err)
+	}
+}
+
+// --- Leading digit ---
+
+func TestIntegration_LeadingDigitKebabPass(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeProject(mem, "go-post.yml", "content")
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+		Validate: &config.Validate{
+			FileName: &config.FileNameRule{
+				Style:             "kebab",
+				AllowLeadingDigit: boolPtr(false),
+			},
+		},
+	}
+	_, err := compiler.Compile(mem, cfg)
+	if err != nil {
+		t.Fatalf("kebab+no-leading-digit pass expected no error, got: %v", err)
+	}
+}
+
+func TestIntegration_LeadingDigitKebabFail(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeProject(mem, "123-post.yml", "content")
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+		Validate: &config.Validate{
+			FileName: &config.FileNameRule{
+				Style:             "kebab",
+				AllowLeadingDigit: boolPtr(false),
+			},
+		},
+	}
+	_, err := compiler.Compile(mem, cfg)
+	if err == nil {
+		t.Fatal("expected error for leading digit, got nil")
+	}
+	if !strings.Contains(err.Error(), "must not start with a digit") {
+		t.Errorf("expected leading digit error, got: %v", err)
+	}
+}
+
+func TestIntegration_LeadingDigitDefaultAllows(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeProject(mem, "123-post.yml", "content")
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+		Validate: &config.Validate{
+			FileName: &config.FileNameRule{
+				Style: "kebab",
+			},
+		},
+	}
+	_, err := compiler.Compile(mem, cfg)
+	if err != nil {
+		t.Fatalf("default (no allow_leading_digit) should allow digits, got: %v", err)
+	}
+}
+
+func TestIntegration_LeadingDigitWithSnake(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeProject(mem, "123_post.yml", "content")
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+		Validate: &config.Validate{
+			FileName: &config.FileNameRule{
+				Style:             "snake",
+				AllowLeadingDigit: boolPtr(false),
+			},
+		},
+	}
+	_, err := compiler.Compile(mem, cfg)
+	if err == nil {
+		t.Fatal("expected error for leading digit with snake style, got nil")
+	}
+}
+
+func TestIntegration_LeadingDigitBlocksWrite(t *testing.T) {
+	mem := fsys.NewMemFS()
+	writeProject(mem, "1bad.yml", "content")
+	cfg := &config.Config{
+		SchemaDir: "schema", DataDir: "data", TemplateDir: "templates",
+		OutputDir: "output", TemplateOrder: []string{"post.template.md"},
+		Validate: &config.Validate{
+			FileName: &config.FileNameRule{
+				AllowLeadingDigit: boolPtr(false),
+			},
+		},
+	}
+	_, err := compiler.Compile(mem, cfg)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	_, err = mem.ReadFile("output/1bad.md")
+	if err == nil {
+		t.Fatal("output file exists despite validation failure")
 	}
 }
 
