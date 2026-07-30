@@ -253,7 +253,7 @@ func TestNormalizeAndValidate_MissingRequiredField(t *testing.T) {
 	fields := map[string]interface{}{}
 	td := &schema.TypeDefinition{
 		Fields: []schema.FieldDefinition{
-			{Name: "title", Type: "string", Required: true},
+			{Name: "title", Type: "string", Required: schema.BoolPtr(true)},
 		},
 	}
 	err := normalizeAndValidate(fields, td)
@@ -266,7 +266,7 @@ func TestNormalizeAndValidate_MissingOptionalField(t *testing.T) {
 	fields := map[string]interface{}{}
 	td := &schema.TypeDefinition{
 		Fields: []schema.FieldDefinition{
-			{Name: "title", Type: "string"},
+			{Name: "title", Type: "string", Required: schema.BoolPtr(false)},
 		},
 	}
 	if err := normalizeAndValidate(fields, td); err != nil {
@@ -333,7 +333,7 @@ body: World
 		"post": {
 			Name: "post",
 			Fields: []schema.FieldDefinition{
-				{Name: "title", Type: "string", Required: true},
+				{Name: "title", Type: "string", Required: schema.BoolPtr(true)},
 				{Name: "body", Type: "string"},
 			},
 		},
@@ -492,7 +492,7 @@ type: post
 
 	types := map[string]*schema.TypeDefinition{
 		"post": {Name: "post", Fields: []schema.FieldDefinition{
-			{Name: "title", Type: "string", Required: true},
+			{Name: "title", Type: "string", Required: schema.BoolPtr(true)},
 		}},
 	}
 

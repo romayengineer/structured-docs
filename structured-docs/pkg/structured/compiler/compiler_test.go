@@ -317,7 +317,7 @@ func TestOverrideRenderer(t *testing.T) {
 		Schema: compiler.SchemaLoaderFunc(func(_ fsys.FS, _ string) (map[string]*schema.TypeDefinition, error) {
 			return map[string]*schema.TypeDefinition{
 				"post": {Name: "post", Fields: []schema.FieldDefinition{
-					{Name: "title", Type: "string", Required: true},
+					{Name: "title", Type: "string", Required: schema.BoolPtr(true)},
 				}},
 			}, nil
 		}),
@@ -375,11 +375,11 @@ func TestOverrideSchemaLoader(t *testing.T) {
 	c := compiler.New(mem)
 	c.Schema = compiler.SchemaLoaderFunc(func(fs fsys.FS, dir string) (map[string]*schema.TypeDefinition, error) {
 		return map[string]*schema.TypeDefinition{
-			"custom": {
-				Name: "custom",
-				Fields: []schema.FieldDefinition{
-					{Name: "title", Type: "string", Required: true},
-				},
+	"custom": {
+			Name: "custom",
+			Fields: []schema.FieldDefinition{
+				{Name: "title", Type: "string", Required: schema.BoolPtr(true)},
+			},
 			},
 		}, nil
 	})

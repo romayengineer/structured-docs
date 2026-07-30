@@ -100,7 +100,7 @@ func normalizeAndValidate(fields map[string]interface{}, td *schema.TypeDefiniti
 	for _, fd := range td.Fields {
 		val, ok := fields[fd.Name]
 		if !ok {
-			if fd.Required {
+			if fd.IsRequired() {
 				return fmt.Errorf("missing required field %q", fd.Name)
 			}
 			continue

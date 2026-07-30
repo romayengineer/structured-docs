@@ -12,8 +12,14 @@ import (
 type FieldDefinition struct {
 	Name     string `yaml:"name"`
 	Type     string `yaml:"type"`
-	Required bool   `yaml:"required"`
+	Required *bool  `yaml:"required"`
 }
+
+func (f *FieldDefinition) IsRequired() bool {
+	return f.Required == nil || *f.Required
+}
+
+func BoolPtr(b bool) *bool { return &b }
 
 type TypeDefinition struct {
 	Name        string

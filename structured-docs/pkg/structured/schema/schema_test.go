@@ -45,14 +45,14 @@ func TestHasField(t *testing.T) {
 func TestField_Found(t *testing.T) {
 	td := &TypeDefinition{
 		Fields: []FieldDefinition{
-			{Name: "title", Type: "string", Required: true},
+			{Name: "title", Type: "string", Required: BoolPtr(true)},
 		},
 	}
 	f := td.Field("title")
 	if f == nil {
 		t.Fatal("expected non-nil field")
 	}
-	if f.Name != "title" || f.Type != "string" || !f.Required {
+	if f.Name != "title" || f.Type != "string" || !f.IsRequired() {
 		t.Error("field attributes mismatch")
 	}
 }
