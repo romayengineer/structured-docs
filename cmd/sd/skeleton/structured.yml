@@ -1,4 +1,5 @@
-schema_dir: schema                 # directory for YAML type schemas (.yml)
+# For full documentation visit https://github.com/romayengineer/structured-docs
+schema_dir: schema      # directory for YAML type schemas (.yml)
 data_dir: data                     # directory for content data files (.yml)
 template_dir: templates            # directory for Go templates (.template.md / .template.html)
 output_dir: ../docs                # directory for generated .md/.html output
