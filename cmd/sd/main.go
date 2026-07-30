@@ -17,6 +17,17 @@ import (
 var version = "dev" // set via -ldflags at build time
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "init" {
+		dir := "."
+		if len(os.Args) > 2 {
+			dir = os.Args[2]
+		}
+		if err := initProject(dir); err != nil {
+			log.Fatalf("init: %v", err)
+		}
+		return
+	}
+
 	showVersion := flag.Bool("version", false, "print version and exit")
 	configPath := flag.String("config", "structured.yml", "path to config file")
 	watchMode := flag.Bool("watch", false, "watch for file changes and recompile")
