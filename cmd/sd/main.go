@@ -14,6 +14,8 @@ import (
 	"github.com/romayengineer/structured-docs/pkg/structured/watcher"
 )
 
+const sdocsDirName = ".sd"
+
 var version = "dev" // set via -ldflags at build time
 
 func findSdocsDir() (string, bool) {
@@ -24,9 +26,9 @@ func findSdocsDir() (string, bool) {
 	dir := wd
 	for {
 		// Check for .sd/structured.yml (created by sd init)
-		candidate := filepath.Join(dir, ".sd", "structured.yml")
+		candidate := filepath.Join(dir, sdocsDirName, "structured.yml")
 		if _, err := os.Stat(candidate); err == nil {
-			return filepath.Join(dir, ".sd"), true
+			return filepath.Join(dir, sdocsDirName), true
 		}
 		// Check for structured.yml directly (custom init dir or manual setup)
 		candidate = filepath.Join(dir, "structured.yml")
@@ -44,7 +46,7 @@ func findSdocsDir() (string, bool) {
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "init" {
-		dir := ".sd"
+		dir := sdocsDirName
 		if len(os.Args) > 2 {
 			dir = os.Args[2]
 		}
