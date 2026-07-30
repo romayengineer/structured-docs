@@ -14,11 +14,55 @@ import (
 	"github.com/romayengineer/structured-docs/pkg/structured/template"
 )
 
-type SchemaLoader   func(fsys.FS, string) (map[string]*schema.TypeDefinition, error)
-type TemplateLoader func(fsys.FS, string) ([]*template.Template, error)
-type DataLoader     func(fsys.FS, string, map[string]*schema.TypeDefinition) ([]*data.DataFile, error)
-type Resolver      func([]*data.DataFile, []*template.Template, []string, map[string]*schema.TypeDefinition) ([]*resolver.Job, error)
-type Renderer      func(*resolver.Job) (string, error)
+type SchemaLoader interface {
+	LoadSchema(fsys.FS, string) (map[string]*schema.TypeDefinition, error)
+}
+
+type SchemaLoaderFunc func(fsys.FS, string) (map[string]*schema.TypeDefinition, error)
+
+func (f SchemaLoaderFunc) LoadSchema(fs fsys.FS, dir string) (map[string]*schema.TypeDefinition, error) {
+	return f(fs, dir)
+}
+
+type TemplateLoader interface {
+	LoadTemplates(fsys.FS, string) ([]*template.Template, error)
+}
+
+type TemplateLoaderFunc func(fsys.FS, string) ([]*template.Template, error)
+
+func (f TemplateLoaderFunc) LoadTemplates(fs fsys.FS, dir string) ([]*template.Template, error) {
+	return f(fs, dir)
+}
+
+type DataLoader interface {
+	LoadData(fsys.FS, string, map[string]*schema.TypeDefinition) ([]*data.DataFile, error)
+}
+
+type DataLoaderFunc func(fsys.FS, string, map[string]*schema.TypeDefinition) ([]*data.DataFile, error)
+
+func (f DataLoaderFunc) LoadData(fs fsys.FS, dir string, types map[string]*schema.TypeDefinition) ([]*data.DataFile, error) {
+	return f(fs, dir, types)
+}
+
+type Resolver interface {
+	Resolve([]*data.DataFile, []*template.Template, []string, map[string]*schema.TypeDefinition) ([]*resolver.Job, error)
+}
+
+type ResolverFunc func([]*data.DataFile, []*template.Template, []string, map[string]*schema.TypeDefinition) ([]*resolver.Job, error)
+
+func (f ResolverFunc) Resolve(dataFiles []*data.DataFile, templates []*template.Template, templateOrder []string, types map[string]*schema.TypeDefinition) ([]*resolver.Job, error) {
+	return f(dataFiles, templates, templateOrder, types)
+}
+
+type Renderer interface {
+	Render(*resolver.Job) (string, error)
+}
+
+type RendererFunc func(*resolver.Job) (string, error)
+
+func (f RendererFunc) Render(job *resolver.Job) (string, error) {
+	return f(job)
+}
 
 type Compiler struct {
 	FS       fsys.FS
@@ -32,31 +76,31 @@ type Compiler struct {
 func New(fs fsys.FS) *Compiler {
 	return &Compiler{
 		FS:       fs,
-		Schema:   schema.LoadAll,
-		Template: template.LoadAll,
-		Data:     data.LoadAll,
-		Resolve:  resolver.ResolveAll,
-		Render:   renderer.Render,
+		Schema:   SchemaLoaderFunc(schema.LoadAll),
+		Template: TemplateLoaderFunc(template.LoadAll),
+		Data:     DataLoaderFunc(data.LoadAll),
+		Resolve:  ResolverFunc(resolver.ResolveAll),
+		Render:   RendererFunc(renderer.Render),
 	}
 }
 
 func (c *Compiler) Compile(cfg *config.Config) ([]Result, error) {
-	types, err := c.Schema(c.FS, cfg.SchemaDir)
+	types, err := c.Schema.LoadSchema(c.FS, cfg.SchemaDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading schemas: %w", err)
 	}
 
-	templates, err := c.Template(c.FS, cfg.TemplateDir)
+	templates, err := c.Template.LoadTemplates(c.FS, cfg.TemplateDir)
 	if err != nil {
 		return nil, fmt.Errorf("loading templates: %w", err)
 	}
 
-	dataFiles, err := c.Data(c.FS, cfg.DataDir, types)
+	dataFiles, err := c.Data.LoadData(c.FS, cfg.DataDir, types)
 	if err != nil {
 		return nil, fmt.Errorf("loading data: %w", err)
 	}
 
-	jobs, err := c.Resolve(dataFiles, templates, cfg.TemplateOrder, types)
+	jobs, err := c.Resolve.Resolve(dataFiles, templates, cfg.TemplateOrder, types)
 	if err != nil {
 		return nil, fmt.Errorf("resolving templates: %w", err)
 	}
@@ -64,7 +108,7 @@ func (c *Compiler) Compile(cfg *config.Config) ([]Result, error) {
 	var results []Result
 
 	for _, job := range jobs {
-		output, err := c.Render(job)
+		output, err := c.Render.Render(job)
 		if err != nil {
 			return nil, fmt.Errorf("rendering %s: %w", job.Data.SourcePath, err)
 		}

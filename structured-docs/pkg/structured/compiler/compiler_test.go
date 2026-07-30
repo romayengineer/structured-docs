@@ -297,33 +297,33 @@ title: Hello
 func TestOverrideRenderer(t *testing.T) {
 	c := &compiler.Compiler{
 		FS: fsys.NewMemFS(),
-		Schema: func(_ fsys.FS, _ string) (map[string]*schema.TypeDefinition, error) {
+		Schema: compiler.SchemaLoaderFunc(func(_ fsys.FS, _ string) (map[string]*schema.TypeDefinition, error) {
 			return map[string]*schema.TypeDefinition{
 				"post": {Name: "post", Fields: []schema.FieldDefinition{
 					{Name: "title", Type: "string", Required: true},
 				}},
 			}, nil
-		},
-		Template: func(_ fsys.FS, _ string) ([]*template.Template, error) {
+		}),
+		Template: compiler.TemplateLoaderFunc(func(_ fsys.FS, _ string) ([]*template.Template, error) {
 			return []*template.Template{
 				{FileName: "post.template.md", Content: "{{ .title }}", RequiredFields: []string{"title"}, OutputExt: ".md"},
 			}, nil
-		},
-		Data: func(_ fsys.FS, _ string, _ map[string]*schema.TypeDefinition) ([]*data.DataFile, error) {
+		}),
+		Data: compiler.DataLoaderFunc(func(_ fsys.FS, _ string, _ map[string]*schema.TypeDefinition) ([]*data.DataFile, error) {
 			return []*data.DataFile{
 				{SourcePath: "test.yml", TypeName: "post", Fields: map[string]interface{}{"title": "Hello"}},
 			}, nil
-		},
-		Resolve: func(df []*data.DataFile, _ []*template.Template, order []string, _ map[string]*schema.TypeDefinition) ([]*resolver.Job, error) {
+		}),
+		Resolve: compiler.ResolverFunc(func(df []*data.DataFile, _ []*template.Template, order []string, _ map[string]*schema.TypeDefinition) ([]*resolver.Job, error) {
 			var jobs []*resolver.Job
 			for _, d := range df {
 				jobs = append(jobs, &resolver.Job{Data: d, Template: &template.Template{FileName: order[0], OutputExt: ".md"}})
 			}
 			return jobs, nil
-		},
-		Render: func(job *resolver.Job) (string, error) {
+		}),
+		Render: compiler.RendererFunc(func(job *resolver.Job) (string, error) {
 			return "mocked-render-output", nil
-		},
+		}),
 	}
 
 	cfg := &config.Config{
@@ -356,7 +356,7 @@ func TestOverrideSchemaLoader(t *testing.T) {
 	mem.WriteFile("templates/custom.template.md", []byte("{{ .title }}"), 0644)
 
 	c := compiler.New(mem)
-	c.Schema = func(fs fsys.FS, dir string) (map[string]*schema.TypeDefinition, error) {
+	c.Schema = compiler.SchemaLoaderFunc(func(fs fsys.FS, dir string) (map[string]*schema.TypeDefinition, error) {
 		return map[string]*schema.TypeDefinition{
 			"custom": {
 				Name: "custom",
@@ -365,7 +365,7 @@ func TestOverrideSchemaLoader(t *testing.T) {
 				},
 			},
 		}, nil
-	}
+	})
 
 	cfg := &config.Config{
 		SchemaDir:     "schema",
@@ -392,23 +392,23 @@ func TestOverrideSchemaLoader(t *testing.T) {
 func TestOverrideResolverFails(t *testing.T) {
 	c := &compiler.Compiler{
 		FS: fsys.NewMemFS(),
-		Schema: func(_ fsys.FS, _ string) (map[string]*schema.TypeDefinition, error) {
+		Schema: compiler.SchemaLoaderFunc(func(_ fsys.FS, _ string) (map[string]*schema.TypeDefinition, error) {
 			return map[string]*schema.TypeDefinition{"post": {Name: "post"}}, nil
-		},
-		Template: func(_ fsys.FS, _ string) ([]*template.Template, error) {
+		}),
+		Template: compiler.TemplateLoaderFunc(func(_ fsys.FS, _ string) ([]*template.Template, error) {
 			return nil, nil
-		},
-		Data: func(_ fsys.FS, _ string, _ map[string]*schema.TypeDefinition) ([]*data.DataFile, error) {
+		}),
+		Data: compiler.DataLoaderFunc(func(_ fsys.FS, _ string, _ map[string]*schema.TypeDefinition) ([]*data.DataFile, error) {
 			return nil, nil
-		},
-		Resolve: func(
+		}),
+		Resolve: compiler.ResolverFunc(func(
 			_ []*data.DataFile,
 			_ []*template.Template,
 			_ []string,
 			_ map[string]*schema.TypeDefinition,
 		) ([]*resolver.Job, error) {
 			return nil, fmt.Errorf("mock resolver failure")
-		},
+		}),
 	}
 
 	_, err := c.Compile(&config.Config{TemplateOrder: []string{"any.md"}})
