@@ -27,7 +27,7 @@ structured-docs/
 │   ├── compiler/                   # Orchestrator with pluggable interfaces
 │   ├── watcher/                    # fsnotify-based --watch mode
 │   └── fsys/                       # FS abstraction (OS + MemFS for testing)
-├── example/                        # Working example project
+├── cmd/sd/skeleton/                 # Template for `sd init`
 │   ├── schema/post.yml
 │   ├── data/blog/hello-world.yml
 │   ├── templates/post.template.md
@@ -44,7 +44,8 @@ structured-docs/
 ## Quick Start
 
 ```sh
-cd example
+sd init mydocs
+cd mydocs
 sd
 # → data/blog/hello-world.yml → output/blog/hello-world.md (md)
 # → compiled 1 file(s)
@@ -59,13 +60,13 @@ sd
 | `make cover` | Test with coverage report |
 | `make cover-html` | Coverage as HTML |
 | `make clean` | `go clean` + remove binary |
-| `make run` | Build + run example |
+| `make run` | Build + run via `sd init` + `sd` |
 | `make install` | Copy binary to `~/.local/bin/` |
 | `go vet ./...` | Static analysis |
 
 ```sh
 # Build and run directly
-go build -o sd ./cmd/sd && ./sd -config example/structured.yml
+go build -o sd ./cmd/sd && ./sd init /tmp/test && cd /tmp/test && ../sd
 ```
 
 ## CLI

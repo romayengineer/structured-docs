@@ -27,4 +27,8 @@ install: build
 	cp sd ~/.local/bin/sd
 
 run: build
-	cd example && ../sd
+	@echo "=== Generating example project ==="
+	@rm -rf /tmp/sd-example
+	./sd init /tmp/sd-example
+	@echo "=== Compiling ==="
+	cd /tmp/sd-example && ../sd

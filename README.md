@@ -17,7 +17,8 @@ GOPROXY=direct go install github.com/romayengineer/structured-docs/cmd/sd@main
 ## Quick Start
 
 ```sh
-cd example
+sd init mydocs
+cd mydocs
 sd
 ```
 
